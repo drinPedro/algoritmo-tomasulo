@@ -1,4 +1,5 @@
 # Algoritmo Tomasulo (C++) 
+Trabalho 02 - Algoritmo de tomasulo em C/C++
 
 ## README
 
