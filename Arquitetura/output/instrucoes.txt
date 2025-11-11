@@ -1,0 +1,4 @@
+LD R1, 20  
+LD R2, 7    
+ADD R3, R1, R2 
+ST R3, 20
