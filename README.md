@@ -1,96 +1,126 @@
 # Algoritmo Tomasulo (C++) 
-Trabalho 02 - Algoritmo de tomasulo em C/C++
+**Trabalho 2 – Simulação ciclo a ciclo do algoritmo de Tomasulo**
 
 ## README
 
-### Objetivo
+---
 
-Simular o algoritmo de Tomasulo (superescalar) ciclo-a-ciclo. O simulador implementa emissão (issue), execução (execute) e gravação de resultados (write-back) com estações de reserva, unidades funcionais, CDB (restrição de 1 broadcast por ciclo), renomeação por tags (Qi), e buffers de load/store. O usuário pode configurar latências e largura de emissão (issue width).
+## Descrição Geral
 
-### O que está implementado
+Este projeto implementa um **simulador completo do algoritmo de Tomasulo**, que executa **instruções ciclo a ciclo**, controlando:
+- Estações de reserva (para soma/subtração e multiplicação/divisão)
+- Buffers de carga e armazenamento (Load/Store)
+- Reorder Buffer (ROB)
+- Banco de registradores e memória principal
 
-* Instruções suportadas: `ADD`, `SUB`, `MUL`, `DIV`, `LD`, `ST`.
+O simulador exibe, a cada ciclo, o estado interno de todas as estruturas, permitindo observar **emissão, execução e escrita dos resultados** das instruções de forma detalhada.
 
-  * `ADD dest src1 src2` (registradores)
-  * `SUB dest src1 src2`
-  * `MUL dest src1 src2`
-  * `DIV dest src1 src2`
-  * `LD dest address` — carrega um valor imediato da memória (ex.: `LD R1 100`)
-  * `ST src address` — armazena valor de `src` em memória no endereço imediato
-* Arquivo de entrada: texto com uma instrução por linha (ver seção abaixo).
-* Registro de inteiros: `R0` .. `R31` (32 registradores). Todos inicializados a 0.
-* Memória simples: mapa de inteiros por endereço (endereços são inteiros). Inicialmente vazia.
-* Estaçõess de reserva para Adder (`ADD`/`SUB`) e Multiplier (`MUL`/`DIV`), com número configurável de entradas.
-* Load/Store Buffer para `LD` e `ST`.
-* Latências (ciclos) por tipo de unidade configuráveis.
-* Largura de emissão (número de instruções que podem ser emitidas por ciclo) configurável para simular superescalaridade.
-* CDB único (apenas um resultado pode ser gravado por ciclo). Se houver mais de uma instrução pronta para escrever, escolhemos pela ordem de término (primeiro a terminar tem prioridade), e se empatar, pela ordem de emissão.
-* Saída ciclo-a-ciclo: estado das estações de reserva (conteúdo, Qi/Qj, Vj/Vk, ocupação, tempo restante), register status (Qi por registrador e seus valores), e estado da memória.
+O algoritmo foi implementado em **C++17** e pode ser executado tanto em **Linux** quanto em **Windows**.
 
-### O que *não* foi implementado
+---
 
-* Reorder Buffer (ROB) e commit in-order. O simulador adota um modelo onde o resultado, uma vez publicado no CDB, atualiza o registrador imediatamente (modelo simplificado de Tomasulo). Se desejar ROB + commit, pode-se estender.
-* Branches/Controle de fluxo e previsão de desvio.
+## Compilação
 
-### Formato do arquivo de entrada (exemplos)
-
-Cada linha contém uma instrução. Comentários começam com `#`.
-
-Exemplo:
-
-```
-# exemplo.txt
-LD R1 100       # R1 = MEM[100]
-LD R2 104
-ADD R3 R1 R2    # R3 = R1 + R2
-MUL R4 R3 R2
-ST R4 200       # MEM[200] = R4
-```
-
-Registradores devem ser referenciados como `R<num>` (ex.: `R0`, `R15`). Endereços de memória para LD/ST são inteiros imediatos.
-
-### Como compilar
-
-Requer compilador compatível com C++17.
-
-No Linux / WSL / macOS:
-
+### Linux
 ```bash
-g++ -std=c++17 -O2 -o tomasulo_sim tomasulo_sim.cpp
+g++ -std=c++17 -O2 -o tomasulo trab2.cpp
 ```
 
-### Como executar
-
+### Windows
 ```bash
-./tomasulo_sim entrada.txt
+g++ -std=c++17 -O2 -o tomasulo.exe trab2.cpp
 ```
 
-Opcionalmente você pode passar parâmetros via linha de comando para configurar latências e recursos:
+---
 
-```
-./tomasulo_sim entrada.txt [issue_width] [num_add_rs] [num_mul_rs] [num_loadbuf] [lat_add] [lat_mul] [lat_load]
-```
+## Execução
 
-Exemplo:
-
-```
-./tomasulo_sim exemplo.txt 2 3 2 2 2 10 2
+### Usando o arquivo padrão (`instrucoes.txt`):
+```bash
+./tomasulo
 ```
 
-onde:
+### Ou especificando outro arquivo:
+```bash
+./tomasulo caminho/para/arquivo.txt
+```
 
-* `issue_width` = 2 instruções por ciclo
-* `num_add_rs` = 3 estações de reserva para adder
-* `num_mul_rs` = 2 estações de reserva para multiplier
-* `num_loadbuf` = 2 entradas no buffer de load/store
-* `lat_add` = latência de adder (ciclos)
-* `lat_mul` = latência do multiplicador
-* `lat_load` = latência de load
+---
 
-Se omitidos, valores padrões são usados.
+## Exemplo de Entrada (`instrucoes.txt`)
 
-### Saída
+```txt
+LD R1, 5  
+LD R2, 10    
+ADD R3, R1, R2 
+ST R3, 20
+```
 
-O programa imprime no stdout o comportamento ciclo-a-ciclo. Ao final, imprime o estado final dos registradores e da memória utilizada.
+**Descrição:**
+1. Carrega o valor imediato `5` em `R1`
+2. Carrega o valor imediato `10` em `R2`
+3. Soma `R1` + `R2` e armazena o resultado em `R3`
+4. Armazena o conteúdo de `R3` na posição de memória `20`
+
+---
+
+## Funcionamento
+
+O simulador segue as etapas do **algoritmo de Tomasulo**, controlando os seguintes estágios a cada ciclo:
+
+1. **Emissão (Issue):** Verifica dependências e estrutura disponível (RS, Load/Store Buffer, ROB).  
+2. **Execução (Execute):** Inicia operações cujos operandos estão prontos.  
+3. **Escrita de resultado (Write Result):** Transmite resultados no barramento comum.  
+4. **Commit (Consolidação):** Escreve resultados no banco de registradores ou memória em ordem.
+
+---
+
+## Estruturas Principais
+
+| Estrutura | Função |
+|------------|---------|
+| **RS (Estação de Reserva)** | Armazena operações pendentes de execução. |
+| **Load Buffer** | Controla instruções de carga imediata (LD). |
+| **Store Buffer** | Gerencia instruções de armazenamento (ST). |
+| **ROB (Reorder Buffer)** | Garante execução fora de ordem com término em ordem. |
+| **Registradores** | Armazena valores e tags de dependência. |
+| **Memória** | Representada por um vetor de 1024 posições inteiras. |
+
+---
+
+## Exemplo de Saída
+
+```
+====== SIMULADOR TOMASULO ======
+Carregadas 4 instrucoes.
+LD funciona como LI (Load Immediate)
+================================
+
+------------------------------------------------------------
+CICLO: 1
+PC: 0 / 4
+
+ESTACOES DE RESERVA (ADD/SUB):
+Idx | Ocup | Op  | Vj   | Vk   | Qj | Qk | ROB
+  0 |    0 | --  |    0 |    0 |  0 |  0 |  0
+  ...
+
+BUFFERS DE CARGA (Load Immediate):
+Idx | Ocup | Imm  | ROB | ExecRest
+  0 |    1 |    5 |   1 |   2
+  ...
+
+ROB (cabeca=1 cauda=3):
+Idx | Ocup | Op  | Dest | Pronta | Valor | Instr
+  1 |    1 | LD  |   1 |     0 |     0 | LD R1, 5
+  2 |    1 | LD  |   2 |     0 |     0 | LD R2, 10
+  ...
+
+Registradores (valor : tag):
+R00=    0 : t= 0    R01=    0 : t= 1    R02=    0 : t= 2    R03=    0 : t= 0
+...
+
+====== EXECUCAO FINALIZADA em 9 ciclos ======
+```
 
 ---
